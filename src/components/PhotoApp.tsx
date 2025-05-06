@@ -1,7 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { FixedSizeList } from 'react-window';
 import axios from 'axios';
 import { Photo, UploadResponse, DeleteResponse } from '../types/photo';
+import moment from 'moment';
+
+interface User {
+  id: number;
+  username: string;
+}
 
 const PhotoApp: React.FC = () => {
   const [photos, setPhotos] = useState<Photo[]>([]);
@@ -9,16 +15,40 @@ const PhotoApp: React.FC = () => {
   const [columns, setColumns] = useState(1);
   const [listHeight, setListHeight] = useState(window.innerHeight - 150);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [user, setUser] = useState<User | null>(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const API_BASE_URL = 'http://localhost/photo-app';
+  const url = new URL(window.location.href);
+  const API_BASE_URL = url.origin;
+/*   const API_BASE_URL = 'http://localhost:3010'; */
+
+  useEffect(() => {
+    // Kiểm tra trạng thái đăng nhập khi tải trang
+    const checkLogin = async () => {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/check_login.php`);
+        if (response.data.success) {
+          setUser({ id: response.data.user.id, username: response.data.user.username });
+        }
+      } catch (error) {
+        console.log('Chưa đăng nhập');
+      }
+    };
+    checkLogin();
+  }, []);
 
   useEffect(() => {
     const updateLayout = () => {
-      const width = window.innerWidth;
-      const containerPadding = width < 640 ? 8 : 16; // 4px * 2 mobile, 8px * 2 desktop
+      if (!containerRef.current) return;
+      const width = containerRef.current.offsetWidth;
+      const containerPadding = width < 640 ? 8 : 16;
       const gap = width < 640 ? 12 : 20;
-      const minColumnWidth = 200; // Chiều rộng tối thiểu mỗi cột
-      // Tính số cột động, giới hạn tối đa 10 cột
+      const minColumnWidth = 200;
+
       const columnsCount = Math.min(
         Math.max(Math.floor((width - containerPadding) / (minColumnWidth + gap)), 1),
         10
@@ -28,18 +58,29 @@ const PhotoApp: React.FC = () => {
     };
 
     updateLayout();
+    const observer = new ResizeObserver(updateLayout);
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
     window.addEventListener('resize', updateLayout);
-    return () => window.removeEventListener('resize', updateLayout);
+
+    return () => {
+      if (containerRef.current) {
+        observer.unobserve(containerRef.current);
+      }
+      window.removeEventListener('resize', updateLayout);
+    };
   }, []);
 
   useEffect(() => {
-    fetchPhotos();
-  }, []);
+    if (user) {
+      fetchPhotos();
+    }
+  }, [user]);
 
   const fetchPhotos = async () => {
     try {
       const response = await axios.get<Photo[]>(`${API_BASE_URL}/get_photos.php`);
-      console.log('API Response:', response.data);
       if (Array.isArray(response.data)) {
         setPhotos(response.data);
         setSelectedIds([]);
@@ -131,19 +172,64 @@ const PhotoApp: React.FC = () => {
     }
   };
 
+  const handleRegister = async () => {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/register.php`, { username, email, password });
+      if (response.data.success) {
+        alert(response.data.message);
+        setIsRegistering(false);
+        setUsername('');
+        setEmail('');
+        setPassword('');
+      } else {
+        alert(`Lỗi: ${response.data.message}`);
+      }
+    } catch (error) {
+      alert('Lỗi khi đăng ký!');
+    }
+  };
+
+  const handleLogin = async () => {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/login.php`, { email, password });
+      if (response.data.success) {
+        setUser(response.data.user);
+        setEmail('');
+        setPassword('');
+      } else {
+        alert(`Lỗi: ${response.data.message}`);
+      }
+    } catch (error) {
+      alert('Lỗi khi đăng nhập!');
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/logout.php`);
+      if (response.data.success) {
+        setUser(null);
+        setPhotos([]);
+        setSelectedIds([]);
+        alert(response.data.message);
+      }
+    } catch (error) {
+      alert('Lỗi khi đăng xuất!');
+    }
+  };
+
   const getItemSize = () => {
-    const width = window.innerWidth;
-    const containerPadding = width < 640 ? 8 : 16; // padding container
-    const gap = width < 640 ? 12 : 20; // gap trong photo-grid
-    const columnsCount = columns; // Sử dụng state columns
-    
-    // Tính chiều rộng mỗi cột
+    const width = containerRef.current?.offsetWidth || window.innerWidth;
+    const containerPadding = width < 640 ? 8 : 16;
+    const gap = width < 640 ? 12 : 20;
+    const columnsCount = columns;
+
     const columnWidth = (width - containerPadding - gap * (columnsCount - 1)) / columnsCount;
-    const imageHeight = columnWidth * (3 / 4); // aspect-ratio 4/3
-    const infoHeight = (width < 640 ? 36 : 40) + (width < 640 ? 10 : 12) * 2; // min-height + padding
-    const marginBottom = width < 640 ? 16 : 24; // margin-bottom của photo-grid
-    
-    return imageHeight + infoHeight + marginBottom + 20; // Buffer tăng lên 20px
+    const imageHeight = columnWidth * (3 / 4);
+    const infoHeight = (width < 640 ? 36 : 40) + (width < 640 ? 10 : 12) * 2;
+    const marginBottom = width < 640 ? 20 : 32;
+
+    return imageHeight + infoHeight + marginBottom + 40;
   };
 
   const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => {
@@ -171,7 +257,10 @@ const PhotoApp: React.FC = () => {
               onClick={() => setSelectedPhoto(photo)}
             />
             <div className="photo-info">
-              <p>{photo.file_name || 'Không có tên'}</p>
+              <span className='filename'>{photo.file_name || 'Không có tên'}</span>
+              <span className="upload-date">
+                {moment(photo.uploaded_at).format('DD/MM/YYYY HH:mm')}
+              </span>
             </div>
           </div>
         ))}
@@ -180,42 +269,96 @@ const PhotoApp: React.FC = () => {
   };
 
   return (
-    <div className="container">
+    <div className="container" ref={containerRef}>
       <h1>Quản lý ảnh</h1>
-      <div className="upload-section">
-        <label className="select-all">
-          <input
-            type="checkbox"
-            checked={selectedIds.length === photos.length && photos.length > 0}
-            onChange={handleSelectAll}
-          />
-          Chọn tất cả
-        </label>
-        <input type="file" id="photoInput" accept="image/*" multiple onChange={handleUpload} />
-        {selectedIds.length > 0 && (
-          <button className="delete-button" onClick={handleDelete}>
-            Xóa {selectedIds.length} ảnh
-          </button>
-        )}
-      </div>
-      {photos.length === 0 ? (
-        <p>Không có ảnh để hiển thị.</p>
+      {!user ? (
+        <div className="auth-section">
+          {isRegistering ? (
+            <>
+              <h2>Đăng ký</h2>
+              <input
+                type="text"
+                placeholder="Username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
+              <input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <input
+                type="password"
+                placeholder="Mật khẩu"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <button onClick={handleRegister}>Đăng ký</button>
+              <button onClick={() => setIsRegistering(false)}>Quay lại đăng nhập</button>
+            </>
+          ) : (
+            <>
+              <h2>Đăng nhập</h2>
+              <input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <input
+                type="password"
+                placeholder="Mật khẩu"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <button onClick={handleLogin}>Đăng nhập</button>
+              <button onClick={() => setIsRegistering(true)}>Đăng ký tài khoản</button>
+            </>
+          )}
+        </div>
       ) : (
-        <div className="photo-list-container">
-          <FixedSizeList
-            height={listHeight}
-            width="100%"
-            itemCount={Math.ceil(photos.length / columns)}
-            itemSize={getItemSize()}
-          >
-            {Row}
-          </FixedSizeList>
-        </div>
-      )}
-      {selectedPhoto && (
-        <div className="modal" onClick={(e) => e.target === e.currentTarget && setSelectedPhoto(null)}>
-          <img src={`${API_BASE_URL}/${selectedPhoto.file_path}`} alt={selectedPhoto.file_name} />
-        </div>
+        <>
+          <div className="user-section">
+            <p>Xin chào, {user.username}!</p>
+            <button onClick={handleLogout}>Đăng xuất</button>
+          </div>
+          <div className="upload-section">
+            <label className="select-all">
+              <input
+                type="checkbox"
+                checked={selectedIds.length === photos.length && photos.length > 0}
+                onChange={handleSelectAll}
+              />
+              Chọn tất cả
+            </label>
+            <input type="file" id="photoInput" accept="image/*" multiple onChange={handleUpload} />
+            {selectedIds.length > 0 && (
+              <button className="delete-button" onClick={handleDelete}>
+                Xóa {selectedIds.length} ảnh
+              </button>
+            )}
+          </div>
+          {photos.length === 0 ? (
+            <p>Không có ảnh để hiển thị.</p>
+          ) : (
+            <div className="photo-list-container">
+              <FixedSizeList
+                height={listHeight}
+                width="100%"
+                itemCount={Math.ceil(photos.length / columns)}
+                itemSize={getItemSize()}
+              >
+                {Row}
+              </FixedSizeList>
+            </div>
+          )}
+          {selectedPhoto && (
+            <div className="modal" onClick={(e) => e.target === e.currentTarget && setSelectedPhoto(null)}>
+              <img src={`${API_BASE_URL}/${selectedPhoto.file_path}`} alt={selectedPhoto.file_name} />
+            </div>
+          )}
+        </>
       )}
     </div>
   );

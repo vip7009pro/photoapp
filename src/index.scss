@@ -24,6 +24,81 @@ h1 {
   margin-bottom: 24px;
 }
 
+.auth-section {
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: $card-bg;
+  border-radius: $border-radius;
+  box-shadow: $shadow;
+
+  h2 {
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+
+  input {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 12px;
+    font-size: 0.875rem;
+    border: 1px solid $secondary-color;
+    border-radius: $border-radius;
+    background-color: lighten($card-bg, 5%);
+    color: $text-color;
+  }
+
+  button {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: none;
+    border-radius: 9999px;
+    background-color: $primary-color;
+    color: white;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: darken($primary-color, 10%);
+    }
+  }
+}
+
+.user-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+
+  p {
+    margin: 0;
+    font-size: 1rem;
+    color: $secondary-color;
+  }
+
+  button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 9999px;
+    background-color: #ff4d4d;
+    color: white;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: #cc0000;
+    }
+  }
+}
+
 .upload-section {
   margin-bottom: 24px;
   display: flex;
@@ -114,6 +189,7 @@ h1 {
   cursor: pointer;
   transition: transform 0.2s;
   position: relative;
+  height: 230px;
 
   &:hover {
     transform: scale(1.05);
@@ -140,18 +216,26 @@ h1 {
   }
 
   .photo-info {
-    padding: 12px;
-    min-height: 40px;
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+    padding: 12px;
+    min-height: 60px;
 
-    p {
-      margin: 0;
+    .filename {
       font-size: 0.875rem;
       color: $secondary-color;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      display: block;
+    }
+
+    .upload-date {
+      font-size: 0.75rem;
+      color: lighten($secondary-color, 20%);
+      display: block;
     }
   }
 }
@@ -195,6 +279,38 @@ h1 {
     margin-bottom: 16px;
   }
 
+  .auth-section {
+    padding: 16px;
+
+    h2 {
+      font-size: 1.25rem;
+    }
+
+    input {
+      font-size: 0.75rem;
+    }
+
+    button {
+      font-size: 0.75rem;
+      padding: 8px;
+    }
+  }
+
+  .user-section {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+
+    p {
+      font-size: 0.875rem;
+    }
+
+    button {
+      padding: 6px 12px;
+      font-size: 0.75rem;
+    }
+  }
+
   .upload-section {
     margin-bottom: 16px;
     flex-direction: column;
@@ -226,13 +342,18 @@ h1 {
   }
 
   .photo-card {
+    height: 380px;
+
     .photo-info {
       padding: 10px;
-      min-height: 36px;
-      font-size: 0.875rem;
+      min-height: 56px;
 
-      p {
+      .filename {
         font-size: 0.875rem;
+      }
+
+      .upload-date {
+        font-size: 0.7rem;
       }
     }
 
