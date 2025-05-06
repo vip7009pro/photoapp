@@ -28,6 +28,7 @@ const PhotoApp: React.FC = () => {
   const [username, setUsername] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
+  const [skippedFiles, setSkippedFiles] = useState<string[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const url = new URL(window.location.href);
@@ -120,15 +121,16 @@ const PhotoApp: React.FC = () => {
       return;
     }
 
-    // Khởi tạo tiến độ cho từng file
     const initialProgress = Array.from(files).map((file) => ({
       fileName: file.name,
       progress: 0,
     }));
     setUploadProgress(initialProgress);
+    setSkippedFiles([]);
 
     let successCount = 0;
     let errorMessages: string[] = [];
+    let skippedMessages: string[] = [];
 
     for (let file of Array.from(files)) {
       const formData = new FormData();
@@ -150,6 +152,8 @@ const PhotoApp: React.FC = () => {
         });
         if (response.data.success) {
           successCount++;
+        } else if (response.data.message === 'Ảnh đã tồn tại') {
+          skippedMessages.push(`${file.name}: Ảnh đã tồn tại`);
         } else {
           errorMessages.push(`Lỗi với ${file.name}: ${response.data.message}`);
         }
@@ -158,15 +162,28 @@ const PhotoApp: React.FC = () => {
       }
     }
 
-    if (successCount === files.length) {
-      alert(`Tải thành công ${successCount} ảnh!`);
-    } else {
-      alert(`Tải thành công ${successCount} ảnh. Lỗi:\n${errorMessages.join('\n')}`);
+    if (successCount > 0 || skippedMessages.length > 0 || errorMessages.length > 0) {
+      let message = [];
+      if (successCount > 0) {
+        message.push(`Tải thành công ${successCount} ảnh`);
+      }
+      if (skippedMessages.length > 0) {
+        message.push(`Bỏ qua ${skippedMessages.length} ảnh trùng lặp:\n${skippedMessages.join('\n')}`);
+        setSkippedFiles(skippedMessages.map(msg => msg.split(':')[0]));
+      }
+      if (errorMessages.length > 0) {
+        message.push(`Lỗi:\n${errorMessages.join('\n')}`);
+      }
+      alert(message.join('\n\n'));
     }
 
-    setUploadProgress([]); // Xóa tiến độ sau khi upload xong
+    setUploadProgress([]);
     fetchPhotos();
     event.target.value = '';
+  };
+
+  const handleClearSkippedFiles = () => {
+    setSkippedFiles([]);
   };
 
   const handleSelect = (id: number) => {
@@ -268,6 +285,22 @@ const PhotoApp: React.FC = () => {
     const marginBottom = width < 640 ? 20 : 32;
 
     return imageHeight + infoHeight + marginBottom + 40;
+  };
+
+  const handleNextPhoto = () => {
+    if (!selectedPhoto) return;
+    const currentIndex = photos.findIndex((photo) => photo.id === selectedPhoto.id);
+    if (currentIndex < photos.length - 1) {
+      setSelectedPhoto(photos[currentIndex + 1]);
+    }
+  };
+
+  const handlePrevPhoto = () => {
+    if (!selectedPhoto) return;
+    const currentIndex = photos.findIndex((photo) => photo.id === selectedPhoto.id);
+    if (currentIndex > 0) {
+      setSelectedPhoto(photos[currentIndex - 1]);
+    }
   };
 
   const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => {
@@ -391,6 +424,21 @@ const PhotoApp: React.FC = () => {
                 ))}
               </div>
             )}
+            {skippedFiles.length > 0 && (
+              <div className="skipped-files">
+                <div className="skipped-files-header">
+                  <p>Ảnh trùng lặp (bỏ qua):</p>
+                  <button className="clear-skipped-button" onClick={handleClearSkippedFiles}>
+                    Ẩn
+                  </button>
+                </div>
+                <ul>
+                  {skippedFiles.map((fileName, index) => (
+                    <li key={index}>{fileName}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
           {photos.length === 0 ? (
             <p>Không có ảnh để hiển thị.</p>
@@ -408,7 +456,21 @@ const PhotoApp: React.FC = () => {
           )}
           {selectedPhoto && (
             <div className="modal" onClick={(e) => e.target === e.currentTarget && setSelectedPhoto(null)}>
+              <button
+                className="modal-nav-button modal-prev-button"
+                onClick={handlePrevPhoto}
+                disabled={photos.findIndex((photo) => photo.id === selectedPhoto.id) === 0}
+              >
+                &lt;
+              </button>
               <img src={`${API_BASE_URL}/${selectedPhoto.file_path}`} alt={selectedPhoto.file_name} />
+              <button
+                className="modal-nav-button modal-next-button"
+                onClick={handleNextPhoto}
+                disabled={photos.findIndex((photo) => photo.id === selectedPhoto.id) === photos.length - 1}
+              >
+                &gt;
+              </button>
             </div>
           )}
         </>

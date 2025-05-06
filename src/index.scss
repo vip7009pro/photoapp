@@ -198,6 +198,60 @@ h1 {
       }
     }
   }
+
+  .skipped-files {
+    width: 100%;
+    max-width: 500px;
+    margin-top: 12px;
+    padding: 10px;
+    background-color: lighten($card-bg, 5%);
+    border-radius: $border-radius;
+    border: 1px solid $secondary-color;
+
+    .skipped-files-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+
+      p {
+        margin: 0;
+        font-size: 0.875rem;
+        color: $secondary-color;
+        font-weight: 600;
+      }
+
+      .clear-skipped-button {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 9999px;
+        background-color: $secondary-color;
+        color: white;
+        font-size: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.2s;
+
+        &:hover {
+          background-color: darken($secondary-color, 10%);
+        }
+      }
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 20px;
+      list-style-type: disc;
+
+      li {
+        font-size: 0.875rem;
+        color: $secondary-color;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+  }
 }
 
 .photo-grid {
@@ -290,6 +344,42 @@ h1 {
     max-height: 90%;
     object-fit: contain;
     animation: zoomIn 0.3s ease-in-out;
+  }
+
+  .modal-nav-button {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    font-size: 1.5rem;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.7);
+    }
+
+    &:disabled {
+      background-color: rgba(0, 0, 0, 0.3);
+      cursor: not-allowed;
+    }
+  }
+
+  .modal-prev-button {
+    left: 20px;
+  }
+
+  .modal-next-button {
+    right: 20px;
   }
 }
 
@@ -386,6 +476,30 @@ h1 {
         }
       }
     }
+
+    .skipped-files {
+      margin-top: 8px;
+      padding: 8px;
+
+      .skipped-files-header {
+        margin-bottom: 6px;
+
+        p {
+          font-size: 0.75rem;
+        }
+
+        .clear-skipped-button {
+          padding: 4px 8px;
+          font-size: 0.7rem;
+        }
+      }
+
+      ul {
+        li {
+          font-size: 0.75rem;
+        }
+      }
+    }
   }
 
   .photo-card {
@@ -407,6 +521,22 @@ h1 {
     .photo-checkbox {
       width: 16px;
       height: 16px;
+    }
+  }
+
+  .modal {
+    .modal-nav-button {
+      width: 32px;
+      height: 32px;
+      font-size: 1.2rem;
+    }
+
+    .modal-prev-button {
+      left: 10px;
+    }
+
+    .modal-next-button {
+      right: 10px;
     }
   }
 }
