@@ -4,9 +4,16 @@ import axios from 'axios';
 import { Photo, UploadResponse, DeleteResponse } from '../types/photo';
 import moment from 'moment';
 
+axios.defaults.withCredentials = true;
+
 interface User {
   id: number;
   username: string;
+}
+
+interface UploadProgress {
+  fileName: string;
+  progress: number;
 }
 
 const PhotoApp: React.FC = () => {
@@ -20,24 +27,34 @@ const PhotoApp: React.FC = () => {
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const url = new URL(window.location.href);
   const API_BASE_URL = url.origin;
-/*   const API_BASE_URL = 'http://localhost:3010'; */
 
   useEffect(() => {
-    // Kiểm tra trạng thái đăng nhập khi tải trang
     const checkLogin = async () => {
       try {
         const response = await axios.get(`${API_BASE_URL}/check_login.php`);
         if (response.data.success) {
-          setUser({ id: response.data.user.id, username: response.data.user.username });
+          const userData = { id: response.data.user.id, username: response.data.user.username };
+          setUser(userData);
+          localStorage.setItem('user', JSON.stringify(userData));
+        } else {
+          setUser(null);
+          localStorage.removeItem('user');
         }
       } catch (error) {
-        console.log('Chưa đăng nhập');
+        console.error('Lỗi kiểm tra đăng nhập:', error);
+        setUser(null);
+        localStorage.removeItem('user');
       }
     };
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
     checkLogin();
   }, []);
 
@@ -103,6 +120,13 @@ const PhotoApp: React.FC = () => {
       return;
     }
 
+    // Khởi tạo tiến độ cho từng file
+    const initialProgress = Array.from(files).map((file) => ({
+      fileName: file.name,
+      progress: 0,
+    }));
+    setUploadProgress(initialProgress);
+
     let successCount = 0;
     let errorMessages: string[] = [];
 
@@ -113,6 +137,16 @@ const PhotoApp: React.FC = () => {
       try {
         const response = await axios.post<UploadResponse>(`${API_BASE_URL}/upload.php`, formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
+          onUploadProgress: (progressEvent) => {
+            if (progressEvent.total) {
+              const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+              setUploadProgress((prev) =>
+                prev.map((item) =>
+                  item.fileName === file.name ? { ...item, progress: percentCompleted } : item
+                )
+              );
+            }
+          },
         });
         if (response.data.success) {
           successCount++;
@@ -130,6 +164,7 @@ const PhotoApp: React.FC = () => {
       alert(`Tải thành công ${successCount} ảnh. Lỗi:\n${errorMessages.join('\n')}`);
     }
 
+    setUploadProgress([]); // Xóa tiến độ sau khi upload xong
     fetchPhotos();
     event.target.value = '';
   };
@@ -193,7 +228,9 @@ const PhotoApp: React.FC = () => {
     try {
       const response = await axios.post(`${API_BASE_URL}/login.php`, { email, password });
       if (response.data.success) {
-        setUser(response.data.user);
+        const userData = response.data.user;
+        setUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData));
         setEmail('');
         setPassword('');
       } else {
@@ -211,6 +248,7 @@ const PhotoApp: React.FC = () => {
         setUser(null);
         setPhotos([]);
         setSelectedIds([]);
+        localStorage.removeItem('user');
         alert(response.data.message);
       }
     } catch (error) {
@@ -337,6 +375,21 @@ const PhotoApp: React.FC = () => {
               <button className="delete-button" onClick={handleDelete}>
                 Xóa {selectedIds.length} ảnh
               </button>
+            )}
+            {uploadProgress.length > 0 && (
+              <div className="progress-container">
+                {uploadProgress.map((item) => (
+                  <div key={item.fileName} className="progress-item">
+                    <p>{item.fileName}: {item.progress}%</p>
+                    <div className="progress-bar">
+                      <div
+                        className="progress-bar-fill"
+                        style={{ width: `${item.progress}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
           {photos.length === 0 ? (
