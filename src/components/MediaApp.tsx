@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { FixedSizeList } from 'react-window';
 import axios from 'axios';
-import { Photo, UploadResponse, DeleteResponse } from '../types/photo';
+import { Media, UploadResponse, DeleteResponse } from '../types/media';
 import moment from 'moment';
 
 axios.defaults.withCredentials = true;
@@ -14,16 +14,17 @@ interface User {
 interface UploadProgress {
   fileName: string;
   progress: number;
+  estimatedTime?: string;
 }
 
-const PhotoApp: React.FC = () => {
-  const [photos, setPhotos] = useState<Photo[]>([]);
-  const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
+const MediaApp: React.FC = () => {
+  const [media, setMedia] = useState<Media[]>([]);
+  const [selectedMedia, setSelectedMedia] = useState<Media | null>(null);
   const [columns, setColumns] = useState(1);
   const [listHeight, setListHeight] = useState(window.innerHeight - 150);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [user, setUser] = useState<User | null>(null);
-  const [email, setEmail] = useState('');
+  const [loginInput, setLoginInput] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
@@ -33,6 +34,7 @@ const PhotoApp: React.FC = () => {
 
   const url = new URL(window.location.href);
   const API_BASE_URL = url.origin;
+  //const API_BASE_URL = 'http://localhost:3010';
 
   useEffect(() => {
     const checkLogin = async () => {
@@ -92,24 +94,24 @@ const PhotoApp: React.FC = () => {
 
   useEffect(() => {
     if (user) {
-      fetchPhotos();
+      fetchMedia();
     }
   }, [user]);
 
-  const fetchPhotos = async () => {
+  const fetchMedia = async () => {
     try {
-      const response = await axios.get<Photo[]>(`${API_BASE_URL}/get_photos.php`);
+      const response = await axios.get<Media[]>(`${API_BASE_URL}/get_media.php`);
       if (Array.isArray(response.data)) {
-        setPhotos(response.data);
+        setMedia(response.data);
         setSelectedIds([]);
       } else {
         console.error('Expected an array, got:', response.data);
-        setPhotos([]);
+        setMedia([]);
         setSelectedIds([]);
       }
     } catch (error) {
-      console.error('Lỗi khi tải danh sách ảnh:', error);
-      setPhotos([]);
+      console.error('Lỗi khi tải danh sách media:', error);
+      setMedia([]);
       setSelectedIds([]);
     }
   };
@@ -117,13 +119,14 @@ const PhotoApp: React.FC = () => {
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) {
-      alert('Vui lòng chọn ít nhất một ảnh!');
+      alert('Vui lòng chọn ít nhất một file!');
       return;
     }
 
     const initialProgress = Array.from(files).map((file) => ({
       fileName: file.name,
       progress: 0,
+      estimatedTime: 'Đang tính...',
     }));
     setUploadProgress(initialProgress);
     setSkippedFiles([]);
@@ -135,6 +138,7 @@ const PhotoApp: React.FC = () => {
     for (let file of Array.from(files)) {
       const formData = new FormData();
       formData.append('photo', file);
+      const startTime = Date.now();
 
       try {
         const response = await axios.post<UploadResponse>(`${API_BASE_URL}/upload.php`, formData, {
@@ -142,9 +146,19 @@ const PhotoApp: React.FC = () => {
           onUploadProgress: (progressEvent) => {
             if (progressEvent.total) {
               const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+              const elapsedTime = (Date.now() - startTime) / 1000; // seconds
+              const uploadSpeed = progressEvent.loaded / elapsedTime; // bytes/s
+              const remainingBytes = progressEvent.total - progressEvent.loaded;
+              const estimatedSeconds = remainingBytes / uploadSpeed;
+              const estimatedTime = estimatedSeconds > 60
+                ? `${Math.floor(estimatedSeconds / 60)}m ${Math.round(estimatedSeconds % 60)}s`
+                : `${Math.round(estimatedSeconds)}s`;
+
               setUploadProgress((prev) =>
                 prev.map((item) =>
-                  item.fileName === file.name ? { ...item, progress: percentCompleted } : item
+                  item.fileName === file.name
+                    ? { ...item, progress: percentCompleted, estimatedTime }
+                    : item
                 )
               );
             }
@@ -152,23 +166,24 @@ const PhotoApp: React.FC = () => {
         });
         if (response.data.success) {
           successCount++;
-        } else if (response.data.message === 'Ảnh đã tồn tại') {
-          skippedMessages.push(`${file.name}: Ảnh đã tồn tại`);
+        } else if (response.data.message === 'Ảnh hoặc video đã tồn tại') {
+          skippedMessages.push(`${file.name}: File đã tồn tại`);
         } else {
           errorMessages.push(`Lỗi với ${file.name}: ${response.data.message}`);
         }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
-        errorMessages.push(`Lỗi với ${file.name}: Không thể tải ảnh`);
+        errorMessages.push(`Lỗi với ${file.name}: Không thể tải file`);
       }
     }
 
     if (successCount > 0 || skippedMessages.length > 0 || errorMessages.length > 0) {
-      let message = [];
+      let message: string[] = [];
       if (successCount > 0) {
-        message.push(`Tải thành công ${successCount} ảnh`);
+        message.push(`Tải thành công ${successCount} file`);
       }
       if (skippedMessages.length > 0) {
-        message.push(`Bỏ qua ${skippedMessages.length} ảnh trùng lặp:\n${skippedMessages.join('\n')}`);
+        message.push(`Bỏ qua ${skippedMessages.length} file trùng lặp:\n${skippedMessages.join('\n')}`);
         setSkippedFiles(skippedMessages.map(msg => msg.split(':')[0]));
       }
       if (errorMessages.length > 0) {
@@ -178,7 +193,7 @@ const PhotoApp: React.FC = () => {
     }
 
     setUploadProgress([]);
-    fetchPhotos();
+    fetchMedia();
     event.target.value = '';
   };
 
@@ -193,20 +208,20 @@ const PhotoApp: React.FC = () => {
   };
 
   const handleSelectAll = () => {
-    if (selectedIds.length === photos.length) {
+    if (selectedIds.length === media.length) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(photos.map((photo) => photo.id));
+      setSelectedIds(media.map((item) => item.id));
     }
   };
 
   const handleDelete = async () => {
     if (selectedIds.length === 0) {
-      alert('Vui lòng chọn ít nhất một ảnh để xóa!');
+      alert('Vui lòng chọn ít nhất một file để xóa!');
       return;
     }
 
-    if (!window.confirm(`Bạn có chắc muốn xóa ${selectedIds.length} ảnh?`)) {
+    if (!window.confirm(`Bạn có chắc muốn xóa ${selectedIds.length} file?`)) {
       return;
     }
 
@@ -214,28 +229,29 @@ const PhotoApp: React.FC = () => {
       const response = await axios.post<DeleteResponse>(`${API_BASE_URL}/delete.php`, { ids: selectedIds });
       if (response.data.success) {
         alert(response.data.message);
-        fetchPhotos();
+        fetchMedia();
       } else {
         alert(`Lỗi: ${response.data.message}`);
       }
     } catch (error) {
-      alert('Lỗi khi xóa ảnh!');
+      alert('Lỗi khi xóa file!');
       console.error('Lỗi xóa:', error);
     }
   };
 
   const handleRegister = async () => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/register.php`, { username, email, password });
+      const response = await axios.post(`${API_BASE_URL}/register.php`, { username, email: loginInput, password });
       if (response.data.success) {
         alert(response.data.message);
         setIsRegistering(false);
         setUsername('');
-        setEmail('');
+        setLoginInput('');
         setPassword('');
       } else {
         alert(`Lỗi: ${response.data.message}`);
       }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       alert('Lỗi khi đăng ký!');
     }
@@ -243,16 +259,17 @@ const PhotoApp: React.FC = () => {
 
   const handleLogin = async () => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/login.php`, { email, password });
+      const response = await axios.post(`${API_BASE_URL}/login.php`, { email: loginInput, password: password });
       if (response.data.success) {
         const userData = response.data.user;
         setUser(userData);
         localStorage.setItem('user', JSON.stringify(userData));
-        setEmail('');
+        setLoginInput('');
         setPassword('');
       } else {
         alert(`Lỗi: ${response.data.message}`);
       }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       alert('Lỗi khi đăng nhập!');
     }
@@ -263,11 +280,12 @@ const PhotoApp: React.FC = () => {
       const response = await axios.post(`${API_BASE_URL}/logout.php`);
       if (response.data.success) {
         setUser(null);
-        setPhotos([]);
+        setMedia([]);
         setSelectedIds([]);
         localStorage.removeItem('user');
         alert(response.data.message);
       }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       alert('Lỗi khi đăng xuất!');
     }
@@ -287,50 +305,55 @@ const PhotoApp: React.FC = () => {
     return imageHeight + infoHeight + marginBottom + 40;
   };
 
-  const handleNextPhoto = () => {
-    if (!selectedPhoto) return;
-    const currentIndex = photos.findIndex((photo) => photo.id === selectedPhoto.id);
-    if (currentIndex < photos.length - 1) {
-      setSelectedPhoto(photos[currentIndex + 1]);
+  const handleNextMedia = () => {
+    if (!selectedMedia) return;
+    const currentIndex = media.findIndex((item) => item.id === selectedMedia.id);
+    if (currentIndex < media.length - 1) {
+      setSelectedMedia(media[currentIndex + 1]);
     }
   };
 
-  const handlePrevPhoto = () => {
-    if (!selectedPhoto) return;
-    const currentIndex = photos.findIndex((photo) => photo.id === selectedPhoto.id);
+  const handlePrevMedia = () => {
+    if (!selectedMedia) return;
+    const currentIndex = media.findIndex((item) => item.id === selectedMedia.id);
     if (currentIndex > 0) {
-      setSelectedPhoto(photos[currentIndex - 1]);
+      setSelectedMedia(media[currentIndex - 1]);
     }
   };
 
   const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => {
-    const photosInRow = photos.slice(index * columns, (index + 1) * columns);
+    const mediaInRow = media.slice(index * columns, (index + 1) * columns);
 
-    if (!photosInRow.length) {
+    if (!mediaInRow.length) {
       return null;
     }
 
     return (
-      <div style={style} className="photo-grid">
-        {photosInRow.map((photo) => (
-          <div key={photo.id} className={`photo-card ${selectedIds.includes(photo.id) ? 'selected' : ''}`}>
+      <div style={style} className="media-grid">
+        {mediaInRow.map((item) => (
+          <div key={item.id} className={`media-card ${selectedIds.includes(item.id) ? 'selected' : ''}`}>
             <input
               type="checkbox"
-              className="photo-checkbox"
-              checked={selectedIds.includes(photo.id)}
-              onChange={() => handleSelect(photo.id)}
+              className="media-checkbox"
+              checked={selectedIds.includes(item.id)}
+              onChange={() => handleSelect(item.id)}
               onClick={(e) => e.stopPropagation()}
             />
-            <img
-              src={`${API_BASE_URL}/${photo.thumbnail_path}`}
-              alt={photo.file_name}
-              loading="lazy"
-              onClick={() => setSelectedPhoto(photo)}
-            />
-            <div className="photo-info">
-              <span className='filename'>{photo.file_name || 'Không có tên'}</span>
+            <div className="media-preview">
+              <img
+                src={`${API_BASE_URL}/${item.thumbnail_path}`}
+                alt={item.file_name}
+                loading="lazy"
+                onClick={() => setSelectedMedia(item)}
+              />
+              {item.media_type === 'video' && (
+                <div className="play-icon">▶</div>
+              )}
+            </div>
+            <div className="media-info">
+              <span className='filename'>{item.file_name || 'Không có tên'}</span>
               <span className="upload-date">
-                {moment(photo.uploaded_at).format('DD/MM/YYYY HH:mm')}
+                {moment(item.uploaded_at).format('DD/MM/YYYY HH:mm')}
               </span>
             </div>
           </div>
@@ -341,7 +364,7 @@ const PhotoApp: React.FC = () => {
 
   return (
     <div className="container" ref={containerRef}>
-      <h1>Quản lý ảnh</h1>
+      <h1>Quản lý Media</h1>
       {!user ? (
         <div className="auth-section">
           {isRegistering ? (
@@ -356,8 +379,8 @@ const PhotoApp: React.FC = () => {
               <input
                 type="email"
                 placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={loginInput}
+                onChange={(e) => setLoginInput(e.target.value)}
               />
               <input
                 type="password"
@@ -372,10 +395,10 @@ const PhotoApp: React.FC = () => {
             <>
               <h2>Đăng nhập</h2>
               <input
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="text"
+                placeholder="Username hoặc Email"
+                value={loginInput}
+                onChange={(e) => setLoginInput(e.target.value)}
               />
               <input
                 type="password"
@@ -398,22 +421,22 @@ const PhotoApp: React.FC = () => {
             <label className="select-all">
               <input
                 type="checkbox"
-                checked={selectedIds.length === photos.length && photos.length > 0}
+                checked={selectedIds.length === media.length && media.length > 0}
                 onChange={handleSelectAll}
               />
               Chọn tất cả
             </label>
-            <input type="file" id="photoInput" accept="image/*" multiple onChange={handleUpload} />
+            <input type="file" id="mediaInput" accept="image/*,video/*" multiple onChange={handleUpload} />
             {selectedIds.length > 0 && (
               <button className="delete-button" onClick={handleDelete}>
-                Xóa {selectedIds.length} ảnh
+                Xóa {selectedIds.length} file
               </button>
             )}
             {uploadProgress.length > 0 && (
               <div className="progress-container">
                 {uploadProgress.map((item) => (
                   <div key={item.fileName} className="progress-item">
-                    <p>{item.fileName}: {item.progress}%</p>
+                    <p>{item.fileName}: {item.progress}% (Thời gian còn lại: {item.estimatedTime})</p>
                     <div className="progress-bar">
                       <div
                         className="progress-bar-fill"
@@ -427,7 +450,7 @@ const PhotoApp: React.FC = () => {
             {skippedFiles.length > 0 && (
               <div className="skipped-files">
                 <div className="skipped-files-header">
-                  <p>Ảnh trùng lặp (bỏ qua):</p>
+                  <p>File trùng lặp (bỏ qua):</p>
                   <button className="clear-skipped-button" onClick={handleClearSkippedFiles}>
                     Ẩn
                   </button>
@@ -440,36 +463,43 @@ const PhotoApp: React.FC = () => {
               </div>
             )}
           </div>
-          {photos.length === 0 ? (
-            <p>Không có ảnh để hiển thị.</p>
+          {media.length === 0 ? (
+            <p>Không có media để hiển thị.</p>
           ) : (
-            <div className="photo-list-container">
+            <div className="media-list-container">
               <FixedSizeList
                 height={listHeight}
                 width="100%"
-                itemCount={Math.ceil(photos.length / columns)}
+                itemCount={Math.ceil(media.length / columns)}
                 itemSize={getItemSize()}
               >
                 {Row}
               </FixedSizeList>
             </div>
           )}
-          {selectedPhoto && (
-            <div className="modal" onClick={(e) => e.target === e.currentTarget && setSelectedPhoto(null)}>
+          {selectedMedia && (
+            <div className="modal" onClick={(e) => e.target === e.currentTarget && setSelectedMedia(null)}>
               <button
                 className="modal-nav-button modal-prev-button"
-                onClick={handlePrevPhoto}
-                disabled={photos.findIndex((photo) => photo.id === selectedPhoto.id) === 0}
+                onClick={handlePrevMedia}
+                disabled={media.findIndex((item) => item.id === selectedMedia.id) === 0}
               >
-                &lt;
+                
               </button>
-              <img src={`${API_BASE_URL}/${selectedPhoto.file_path}`} alt={selectedPhoto.file_name} />
+              {selectedMedia.media_type === 'image' ? (
+                <img src={`${API_BASE_URL}/${selectedMedia.file_path}`} alt={selectedMedia.file_name} />
+              ) : (
+                <video controls autoPlay muted>
+                  <source src={`${API_BASE_URL}/${selectedMedia.file_path}`} type={`video/${selectedMedia.file_name.split('.').pop()?.toLowerCase()}`} />
+                  Trình duyệt không hỗ trợ video.
+                </video>
+              )}
               <button
                 className="modal-nav-button modal-next-button"
-                onClick={handleNextPhoto}
-                disabled={photos.findIndex((photo) => photo.id === selectedPhoto.id) === photos.length - 1}
-              >
-                &gt;
+                onClick={handleNextMedia}
+                disabled={media.findIndex((item) => item.id === selectedMedia.id) === media.length - 1}
+              
+                >
               </button>
             </div>
           )}
@@ -479,4 +509,4 @@ const PhotoApp: React.FC = () => {
   );
 };
 
-export default PhotoApp;
+export default MediaApp;

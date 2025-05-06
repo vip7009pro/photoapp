@@ -1,9 +1,9 @@
-import PhotoApp from "./components/PhotoApp";
+import MediaApp from "./components/MediaApp";
 
 const App: React.FC = () => {
   return (
     <div className="app-container">
-      <PhotoApp />
+      <MediaApp />
     </div>
   );
 };

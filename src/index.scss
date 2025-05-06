@@ -168,14 +168,14 @@ h1 {
 
   .progress-container {
     width: 100%;
-    max-width: 500px;
+    max-width: 600px; /* Tăng kích thước container */
     margin-top: 12px;
 
     .progress-item {
-      margin-bottom: 8px;
+      margin-bottom: 12px;
 
       p {
-        margin: 0 0 4px 0;
+        margin: 0 0 6px 0;
         font-size: 0.875rem;
         color: $secondary-color;
         overflow: hidden;
@@ -185,7 +185,7 @@ h1 {
 
       .progress-bar {
         width: 100%;
-        height: 8px;
+        height: 10px; /* Tăng chiều cao thanh tiến trình */
         background-color: lighten($card-bg, 10%);
         border-radius: 4px;
         overflow: hidden;
@@ -201,7 +201,7 @@ h1 {
 
   .skipped-files {
     width: 100%;
-    max-width: 500px;
+    max-width: 600px;
     margin-top: 12px;
     padding: 10px;
     background-color: lighten($card-bg, 5%);
@@ -254,7 +254,7 @@ h1 {
   }
 }
 
-.photo-grid {
+.media-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 20px;
@@ -268,7 +268,7 @@ h1 {
   }
 }
 
-.photo-card {
+.media-card {
   background-color: $card-bg;
   border-radius: $border-radius;
   box-shadow: $shadow;
@@ -286,7 +286,7 @@ h1 {
     border: 2px solid $primary-color;
   }
 
-  .photo-checkbox {
+  .media-checkbox {
     position: absolute;
     top: 8px;
     left: 8px;
@@ -296,13 +296,36 @@ h1 {
     cursor: pointer;
   }
 
-  img {
+  .media-preview {
+    position: relative;
     width: 100%;
     aspect-ratio: 4 / 3;
-    object-fit: cover;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .play-icon {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 2rem;
+      color: white;
+      background-color: rgba(0, 0, 0, 0.5);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
   }
 
-  .photo-info {
+  .media-info {
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
@@ -339,7 +362,7 @@ h1 {
   justify-content: center;
   z-index: 50;
 
-  img {
+  img, video {
     max-width: 90%;
     max-height: 90%;
     object-fit: contain;
@@ -465,6 +488,7 @@ h1 {
 
     .progress-container {
       margin-top: 8px;
+      max-width: 100%; /* Responsive trên mobile */
 
       .progress-item {
         p {
@@ -472,7 +496,7 @@ h1 {
         }
 
         .progress-bar {
-          height: 6px;
+          height: 8px;
         }
       }
     }
@@ -502,10 +526,10 @@ h1 {
     }
   }
 
-  .photo-card {
+  .media-card {
     height: 380px;
 
-    .photo-info {
+    .media-info {
       padding: 10px;
       min-height: 56px;
 
@@ -518,9 +542,17 @@ h1 {
       }
     }
 
-    .photo-checkbox {
+    .media-checkbox {
       width: 16px;
       height: 16px;
+    }
+
+    .media-preview {
+      .play-icon {
+        font-size: 1.5rem;
+        width: 32px;
+        height: 32px;
+      }
     }
   }
 
@@ -541,7 +573,7 @@ h1 {
   }
 }
 
-.photo-list-container {
+.media-list-container {
   touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
   overflow-y: auto;
