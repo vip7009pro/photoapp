@@ -34,7 +34,6 @@ const MediaApp: React.FC = () => {
 
   const url = new URL(window.location.href);
   const API_BASE_URL = url.origin;
-  //const API_BASE_URL = 'http://localhost:3010';
 
   useEffect(() => {
     const checkLogin = async () => {
@@ -171,14 +170,13 @@ const MediaApp: React.FC = () => {
         } else {
           errorMessages.push(`Lỗi với ${file.name}: ${response.data.message}`);
         }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         errorMessages.push(`Lỗi với ${file.name}: Không thể tải file`);
       }
     }
 
     if (successCount > 0 || skippedMessages.length > 0 || errorMessages.length > 0) {
-      let message: string[] = [];
+      let message = [];
       if (successCount > 0) {
         message.push(`Tải thành công ${successCount} file`);
       }
@@ -251,7 +249,6 @@ const MediaApp: React.FC = () => {
       } else {
         alert(`Lỗi: ${response.data.message}`);
       }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       alert('Lỗi khi đăng ký!');
     }
@@ -269,7 +266,6 @@ const MediaApp: React.FC = () => {
       } else {
         alert(`Lỗi: ${response.data.message}`);
       }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       alert('Lỗi khi đăng nhập!');
     }
@@ -285,7 +281,6 @@ const MediaApp: React.FC = () => {
         localStorage.removeItem('user');
         alert(response.data.message);
       }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       alert('Lỗi khi đăng xuất!');
     }
@@ -351,9 +346,11 @@ const MediaApp: React.FC = () => {
               )}
             </div>
             <div className="media-info">
-              <span className='filename'>{item.file_name || 'Không có tên'}</span>
-              <span className="upload-date">
-                {moment(item.uploaded_at).format('DD/MM/YYYY HH:mm')}
+              <span className="filename">{item.file_name || 'Không có tên'}</span>
+              <span className="capture-date">
+                {item.capture_date
+                  ? moment(item.capture_date).format('DD/MM/YYYY HH:mm')
+                  : moment(item.uploaded_at).format('DD/MM/YYYY HH:mm')}
               </span>
             </div>
           </div>
